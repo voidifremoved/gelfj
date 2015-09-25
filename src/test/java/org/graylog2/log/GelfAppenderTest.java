@@ -1,19 +1,34 @@
 package org.graylog2.log;
 
-import org.apache.log4j.*;
-import org.apache.log4j.spi.ErrorHandler;
-import org.apache.log4j.spi.LoggingEvent;
-import org.graylog2.*;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThat;
 
 import java.io.IOException;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.Locale.Category;
 
-import static org.hamcrest.CoreMatchers.*;
-import static org.junit.Assert.*;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.MarkerManager.Log4jMarker;
+import org.apache.logging.log4j.core.Appender;
+import org.apache.logging.log4j.core.ErrorHandler;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.impl.Log4jLogEvent;
+import org.apache.logging.log4j.message.Message;
+import org.apache.logging.log4j.message.SimpleMessage;
+import org.graylog2.GelfMessage;
+import org.graylog2.GelfSender;
+import org.graylog2.GelfSenderResult;
+import org.graylog2.GelfTCPSender;
+import org.graylog2.GelfUDPSender;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 /**
  * @author Anton Yakimov
@@ -30,16 +45,11 @@ public class GelfAppenderTest {
     public void setUp() throws IOException {
         gelfSender = new TestGelfSender("localhost");
 
-        gelfAppender = new GelfAppender() {
+        gelfAppender = new GelfAppender("Test", null, null) {
 
             @Override
             public GelfSender getGelfSender() {
                 return gelfSender;
-            }
-
-            @Override
-            public void append(LoggingEvent event) {
-                super.append(event);
             }
             
             @Override
@@ -57,14 +67,14 @@ public class GelfAppenderTest {
     @After
     public void tearDown() {
         if (gelfAppender.isAddExtendedInformation()) {
-            NDC.clear();
+            //NDC.clear();
         }
     }
 
     @Test
     public void ensureHostnameForMessage() {
 
-        LoggingEvent event = new LoggingEvent(CLASS_NAME, Category.getInstance(GelfAppenderTest.class), 123L, Level.INFO, "Das Auto",
+        LogEvent event = new Log4jLogEvent(CLASS_NAME, null, GelfAppenderTest.class.getName(), Level.INFO, new SimpleMessage("Das Auto"),
                 new RuntimeException("Volkswagen"));
         gelfAppender.append(event);
 

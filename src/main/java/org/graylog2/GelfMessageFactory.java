@@ -1,16 +1,14 @@
 package org.graylog2;
 
-import org.apache.log4j.Layout;
-import org.apache.log4j.Level;
-import org.apache.log4j.MDC;
-import org.apache.log4j.spi.LocationInfo;
-import org.apache.log4j.spi.LoggingEvent;
-import org.apache.log4j.spi.ThrowableInformation;
-import org.graylog2.log.Log4jVersionChecker;
-
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Map;
+
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.ThreadContext.ContextStack;
+import org.apache.logging.log4j.core.Layout;
+import org.apache.logging.log4j.core.LogEvent;
+import org.graylog2.log.Log4jVersionChecker;
 
 public class GelfMessageFactory {
 
@@ -22,19 +20,22 @@ public class GelfMessageFactory {
     private static final String JAVA_TIMESTAMP = "timestampMs";
 
     @SuppressWarnings("unchecked")
-    public static GelfMessage makeMessage(Layout layout, LoggingEvent event, GelfMessageProvider provider) {
+    public static GelfMessage makeMessage(Layout<String> layout, LogEvent event, GelfMessageProvider provider) {
         long timeStamp = Log4jVersionChecker.getTimeStamp(event);
         Level level = event.getLevel();
 
         String file = null;
         String lineNumber = null;
         if (provider.isIncludeLocation()) {
-            LocationInfo locationInformation = event.getLocationInformation();
-            file = locationInformation.getFileName();
-            lineNumber = locationInformation.getLineNumber();
+        	StackTraceElement locationInformation = event.getSource();
+        	if (locationInformation != null)
+        	{
+        		file = locationInformation.getFileName();
+            	lineNumber = String.valueOf(locationInformation.getLineNumber());
+        	}
         }
 
-        String renderedMessage = layout != null ? layout.format(event) : event.getRenderedMessage();
+        String renderedMessage = layout != null ? layout.toSerializable(event) : event.getMessage().getFormattedMessage();
         String shortMessage;
 
         if (renderedMessage == null) {
@@ -42,7 +43,7 @@ public class GelfMessageFactory {
         }
 
         if (provider.isExtractStacktrace()) {
-            ThrowableInformation throwableInformation = event.getThrowableInformation();
+            Throwable throwableInformation = event.getThrown();
             if (throwableInformation != null) {
                 renderedMessage += "\n\r" + extractStacktrace(throwableInformation);
             }
@@ -55,7 +56,7 @@ public class GelfMessageFactory {
         }
 
         GelfMessage gelfMessage = new GelfMessage(shortMessage, renderedMessage, timeStamp,
-                String.valueOf(level.getSyslogEquivalent()), lineNumber, file);
+                String.valueOf(level.intLevel()), lineNumber, file);
 
         if (provider.getOriginHost() != null) {
             gelfMessage.setHost(provider.getOriginHost());
@@ -81,17 +82,17 @@ public class GelfMessageFactory {
             gelfMessage.addField(JAVA_TIMESTAMP, Long.toString(gelfMessage.getJavaTimestamp()));
 
             // Get MDC and add a GELF field for each key/value pair
-            Map<String, Object> mdc = MDC.getContext();
+			Map<String, String> mdc = event.getContextMap();
 
             if (mdc != null) {
-                for (Map.Entry<String, Object> entry : mdc.entrySet()) {
+                for (Map.Entry<String, String> entry : mdc.entrySet()) {
                     Object value = provider.transformExtendedField(entry.getKey(), entry.getValue());
                     gelfMessage.addField(entry.getKey(), value);
                 }
             }
 
             // Get NDC and add a GELF field
-            String ndc = event.getNDC();
+            ContextStack ndc = event.getContextStack();
 
             if (ndc != null) {
                 gelfMessage.addField(LOGGER_NDC, ndc);
@@ -101,10 +102,10 @@ public class GelfMessageFactory {
         return gelfMessage;
     }
 
-    private static String extractStacktrace(ThrowableInformation throwableInformation) {
+    private static String extractStacktrace(Throwable throwable) {
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);
-        throwableInformation.getThrowable().printStackTrace(pw);
+        throwable.printStackTrace(pw);
         return sw.toString();
     }
 }
