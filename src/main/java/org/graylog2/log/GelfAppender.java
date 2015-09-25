@@ -16,6 +16,20 @@ import org.apache.logging.log4j.core.Filter;
 import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.appender.AbstractAppender;
+import org.apache.logging.log4j.core.appender.SocketAppender;
+import org.apache.logging.log4j.core.config.Configuration;
+import org.apache.logging.log4j.core.config.plugins.Plugin;
+import org.apache.logging.log4j.core.config.plugins.PluginAliases;
+import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
+import org.apache.logging.log4j.core.config.plugins.PluginConfiguration;
+import org.apache.logging.log4j.core.config.plugins.PluginElement;
+import org.apache.logging.log4j.core.config.plugins.PluginFactory;
+import org.apache.logging.log4j.core.layout.SerializedLayout;
+import org.apache.logging.log4j.core.net.AbstractSocketManager;
+import org.apache.logging.log4j.core.net.Protocol;
+import org.apache.logging.log4j.core.net.ssl.SslConfiguration;
+import org.apache.logging.log4j.core.util.Booleans;
+import org.apache.logging.log4j.util.EnglishEnums;
 import org.graylog2.GelfAMQPSender;
 import org.graylog2.GelfMessage;
 import org.graylog2.GelfMessageFactory;
@@ -31,14 +45,16 @@ import org.json.simple.JSONValue;
  * @author Anton Yakimov
  * @author Jochen Schalanda
  */
+@Plugin(name="GelfAppender", category="Core", elementType="appender", printObject=true)
 public class GelfAppender extends AbstractAppender implements GelfMessageProvider {
 
-    private String graylogHost;
-    private String amqpURI;
-    private String amqpExchangeName;
-    private String amqpRoutingKey;
-    private int amqpMaxRetries = 0;
-    private static String originHost;
+	private static String originHost;
+	
+    private String graylogHost; //
+    private String amqpURI; //
+    private String amqpExchangeName; //
+    private String amqpRoutingKey; //
+    private int amqpMaxRetries = 0; //
     private int graylogPort = 12201;
     private String facility;
     private GelfSender gelfSender;
@@ -47,16 +63,71 @@ public class GelfAppender extends AbstractAppender implements GelfMessageProvide
     private boolean includeLocation = true;
     private Map<String, String> fields;
 
-    public GelfAppender(String name, Filter filter, Layout<? extends Serializable> layout, boolean ignoreExceptions)
+    private GelfAppender(String name, Filter filter, Layout<? extends Serializable> layout, boolean ignoreExceptions)
 	{
 		super(name, filter, layout, ignoreExceptions);
 	}
 
-	public GelfAppender(String name, Filter filter, Layout<? extends Serializable> layout)
+	private GelfAppender(String name, Filter filter, Layout<? extends Serializable> layout)
 	{
 		super(name, filter, layout);
 	}
 
+    @PluginFactory
+    public static GelfAppender createAppender(
+            // @formatter:off
+    		@PluginAttribute("name") final String name,
+            @PluginAttribute("graylogHost") final String graylogHost,
+            @PluginAttribute("originHost") final String originHost,
+            @PluginAttribute(value="graylogPort", defaultInt=0) final int graylogPort,
+            
+            @PluginAttribute("amqpURI") final String amqpURI,
+            @PluginAttribute("amqpExchangeName") final String amqpExchangeName,
+            @PluginAttribute("amqpRoutingKey") final String amqpRoutingKey,
+            
+  
+            @PluginAttribute(value = "amqpMaxRetries", defaultInt = 0) final int amqpMaxRetries,
+            
+            @PluginAttribute("facility") final String facility,
+            @PluginAttribute("additionalFields") final String additionalFields,
+            
+            @PluginAttribute(value="extractStacktrace", defaultBoolean=false) final boolean extractStacktrace,
+            @PluginAttribute(value="includeLocation", defaultBoolean=true) final boolean includeLocation,
+            @PluginAttribute(value="addExtendedInformation", defaultBoolean=false) final boolean addExtendedInformation,
+            @PluginElement("Layout") Layout<? extends Serializable> layout,
+            @PluginElement("Filter") final Filter filter, 
+            @PluginConfiguration final Configuration config) {
+            // @formatter:on
+    	
+
+        if (layout == null) {
+            layout = SerializedLayout.createLayout();
+        }
+
+        if (name == null) {
+            LOGGER.error("No name provided for GelfAppender");
+            return null;
+        }
+
+        GelfAppender appender = new GelfAppender(name, filter, layout);
+        appender.setGraylogHost(graylogHost);
+        appender.setOriginHost(originHost != null && !originHost.isEmpty() ? originHost : null);
+        appender.setGraylogPort(graylogPort);
+        appender.setAmqpURI(amqpURI);
+        appender.setAmqpExchangeName(amqpExchangeName);
+        appender.setAmqpRoutingKey(amqpRoutingKey);
+        appender.setAmqpMaxRetries(amqpMaxRetries);
+        appender.setFacility(facility);
+        appender.setAdditionalFields(additionalFields);
+        appender.setExtractStacktrace(extractStacktrace);
+        appender.setIncludeLocation(includeLocation);
+        appender.setAddExtendedInformation(addExtendedInformation);
+        
+        return appender;
+    }
+	
+	
+	
 	@SuppressWarnings("unchecked")
     public void setAdditionalFields(String additionalFields) {
         fields = (Map<String, String>) JSONValue.parse(additionalFields.replaceAll("'", "\""));

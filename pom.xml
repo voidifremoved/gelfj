@@ -17,7 +17,7 @@
 
     <groupId>org.graylog2</groupId>
     <artifactId>gelfj</artifactId>
-    <version>1.1.13-SNAPSHOT</version>
+    <version>1.1.13-LOG4J2</version>
     <packaging>bundle</packaging>
     <name>gelfj</name>
     <description>GELF implementation in Java and log4j appender without any dependencies.</description>
@@ -96,19 +96,7 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-                <version>2.9</version>
-                <executions>
-                    <execution>
-                        <id>attach-javadocs</id>
-                        <goals>
-                            <goal>jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
+
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>findbugs-maven-plugin</artifactId>
