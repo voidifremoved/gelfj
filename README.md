@@ -11,8 +11,7 @@ Add the following dependency section to your pom.xml:
       <dependency>
         <groupId>org.graylog2</groupId>
         <artifactId>gelfj</artifactId>
-        <version>1.1.10</version>
-        <scope>compile</scope>
+        <version>1.1.13-LOG4J2</version>
       </dependency>
       ...
     </dependencies>
@@ -39,17 +38,32 @@ Log4j appender
 
 GelfAppender will use the log message as a short message and a stacktrace (if exception available) as a long message if "extractStacktrace" is true.
 
-To use GELF Facility as appender in Log4j (XML configuration format):
+To use GELF Facility as appender in Log4j2.xml:
 
-    <appender name="graylog2" class="org.graylog2.log.GelfAppender">
-        <param name="graylogHost" value="192.168.0.201"/>
-        <param name="originHost" value="my.machine.example.com"/>
-        <param name="extractStacktrace" value="true"/>
-        <param name="addExtendedInformation" value="true"/>
-        <param name="facility" value="gelf-java"/>
-        <param name="Threshold" value="INFO"/>
-        <param name="additionalFields" value="{'environment': 'DEV', 'application': 'MyAPP'}"/>
-    </appender>
+
+    <GelfAppender name="graylog2"
+        graylogHost="192.168.0.201"
+        originHost="my.machine.example.com"
+        extractStacktrace="true"
+        addExtendedInformation="true"
+        facility="gelf-java"
+        additionalFields="{'environment': 'DEV', 'application': 'MyAPP'}">
+    </GelfAppender>
+    
+Or for AMQP:
+
+    <GelfAppender name="graylog2"
+        amqpURI="192.168.0.201"
+        amqpExchangeName="log-exchange"
+        amqpRoutingKey="graylog2"
+        amqpMaxRetries="5"
+        originHost="my.machine.example.com"
+        extractStacktrace="true"
+        addExtendedInformation="true"
+        facility="gelf-java"
+        additionalFields="{'environment': 'DEV', 'application': 'MyAPP'}">
+    </GelfAppender>    
+    
 
 and then add it as a one of appenders:
 
@@ -58,34 +72,6 @@ and then add it as a one of appenders:
         <appender-ref ref="graylog2"/>
     </root>
 
-Or, in the log4j.properties format:
-
-    # Define the graylog2 destination
-    log4j.appender.graylog2=org.graylog2.log.GelfAppender
-    log4j.appender.graylog2.graylogHost=graylog2.example.com
-    log4j.appender.graylog2.originHost=my.machine.example.com
-    log4j.appender.graylog2.facility=gelf-java
-    log4j.appender.graylog2.layout=org.apache.log4j.PatternLayout
-    log4j.appender.graylog2.extractStacktrace=true
-    log4j.appender.graylog2.addExtendedInformation=true
-    log4j.appender.graylog2.additionalFields={'environment': 'DEV', 'application': 'MyAPP'}
-
-    # Send all INFO logs to graylog2
-    log4j.rootLogger=INFO, graylog2
-
-AMQP Configuration:
-
-    log4j.appender.graylog2=org.graylog2.log.GelfAppender
-    log4j.appender.graylog2.amqpURI=amqp://amqp.address.com
-    log4j.appender.graylog2.amqpExchangeName=messages
-    log4j.appender.graylog2.amqpRoutingKey=gelfudp
-    log4j.appender.graylog2.amqpMaxRetries=5
-    log4j.appender.graylog2.facility=test-application
-    log4j.appender.graylog2.layout=org.apache.log4j.PatternLayout
-    log4j.appender.graylog2.layout.ConversionPattern=%d{HH:mm:ss,SSS} %-5p [%t] [%c{1}] - %m%n
-    log4j.appender.graylog2.additionalFields={'environment': 'DEV', 'application': 'MyAPP'}
-    log4j.appender.graylog2.extractStacktrace=true
-    log4j.appender.graylog2.addExtendedInformation=true
 
 Options
 -------
@@ -104,24 +90,6 @@ GelfAppender supports the following options:
 - **amqpRoutingKey**: AMQP Routing key - should be the same as setup in graylog2-radio (*required when using AMQP integration*)
 - **amqpMaxRetries**: Retries count; default value 0 (*optional*)
 
-Logging Handler
----------------
-
-Configured via properties as a standard Handler like
-
-    handlers = org.graylog2.logging.GelfHandler
-
-    .level = ALL
-
-    org.graylog2.logging.GelfHandler.level = ALL
-    org.graylog2.logging.GelfHandler.graylogHost = syslog.example.com
-    #org.graylog2.logging.GelfHandler.graylogPort = 12201
-    #org.graylog2.logging.GelfHandler.extractStacktrace = true
-    #org.graylog2.logging.GelfHandler.additionalField.0 = foo=bah
-    #org.graylog2.logging.GelfHandler.additionalField.1 = foo2=bah2
-    #org.graylog2.logging.GelfHandler.facility = local0
-
-    .handlers=org.graylog2.logging.GelfHandler
 
 What is GELF
 ------------
