@@ -1,6 +1,9 @@
 GELFJ - A GELF Appender for Log4j and a GELF Handler for JDK Logging
 ====================================================================
 
+Forked from https://github.com/t0xa/gelfj/wiki to make it work with Log4j2.
+
+
 Downloading
 -----------
 
